@@ -15,6 +15,7 @@ from sentence_transformers import CrossEncoder
 
 from src.data.load_scifact import CorpusType
 from src.data.preprocess import build_doc_text
+from src.retrieval.base_retriever import BaseRetriever
 from src.utils import config, get_logger
 
 logger = get_logger(__name__)
@@ -59,3 +60,35 @@ class Reranker:
             zip(doc_id_list, scores.tolist()), key=lambda x: x[1], reverse=True
         )
         return {doc_id: float(score) for doc_id, score in ranked[:k]}
+
+
+
+class RerankedRetriever(BaseRetriever):
+    def __init__(
+        self,
+        base_retriever,
+        corpus,
+        reranker = Reranker(),
+        candidate_k: int = 50,
+    ):
+        self.base_retriever = base_retriever
+        self.reranker = reranker
+        self.corpus = corpus
+        self.candidate_k = candidate_k
+
+    def load(self) -> bool:
+        return self.base_retriever.load()
+    
+
+    def retrieve(self, query: str, top_k: int | None = None) -> Dict[str, float]:
+        candidates = self.base_retriever.retrieve(
+            query,
+            top_k=self.candidate_k,
+        )
+
+        return self.reranker.rerank(
+            query=query,
+            candidates=candidates,
+            corpus=self.corpus,
+            top_k=top_k
+        )
