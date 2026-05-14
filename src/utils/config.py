@@ -101,23 +101,31 @@ class Config:
     INDEX_DIR: Path = BASE_DIR / "data" / "indexes"
     REPORTS_DIR: Path = BASE_DIR / "reports"
 
-    # Models — specter is tuned for scientific papers
+    # Models — retrieval
     EMBEDDING_MODEL: str = "allenai/specter"
     RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
-    CLAUDE_MODEL: str = "claude-sonnet-4-6"
 
-    # API
+    # LLM — generation
+    OLLAMA_MODEL: str = field(
+        default_factory=lambda: os.environ.get("OLLAMA_MODEL", "mistral")
+    )
+    OLLAMA_URL: str = field(
+        default_factory=lambda: os.environ.get("OLLAMA_URL", "http://localhost:11434")
+    )
+    CLAUDE_MODEL: str = field(
+        default_factory=lambda: os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+    )
     ANTHROPIC_API_KEY: str = field(
         default_factory=lambda: os.environ.get("ANTHROPIC_API_KEY", "")
     )
+    MAX_TOKENS: int = 1024
+    TEMPERATURE: float = 0.1
 
     # Retrieval
     TOP_K_BM25: int = 100
     TOP_K_DENSE: int = 100
     TOP_K_HYBRID: int = 20
-    TOP_K_RERANK: int = 5
-    BM25_WEIGHT: float = 0.4
-    DENSE_WEIGHT: float = 0.6
+    TOP_K_RERANK: int = 10
     RRF_K: int = 60
 
     # Tokenizer (BM25)
@@ -125,10 +133,6 @@ class Config:
         default_factory=lambda: TOKENIZER_SCENARIOS[DEFAULT_TOKENIZER_SCENARIO]
     )
 
-
-    # Generation
-    MAX_TOKENS: int = 1024
-    TEMPERATURE: float = 0.1
 
     # Flask
     FLASK_DEBUG: bool = field(
@@ -141,5 +145,6 @@ class Config:
             "SECRET_KEY", "dev-secret-key-change-in-prod"
         )
     )
+
 
 config = Config()

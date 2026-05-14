@@ -12,7 +12,7 @@ from nltk.corpus import stopwords as nltk_stopwords
 from nltk.stem import PorterStemmer, SnowballStemmer
 
 from .load_scifact import CorpusType
-from src.utils.config import TokenizerConfig, Config
+from src.utils.config import TokenizerConfig, config
 
 
 try:
@@ -38,6 +38,7 @@ ALL_STOP_WORDS: frozenset[str] = ENGLISH_STOP_WORDS | SCIENTIFIC_STOP_WORDS
 
 PORTER_STEMMER = PorterStemmer()
 SNOWBALL_STEMMER = SnowballStemmer("english")
+STEMMERS = {"porter": PORTER_STEMMER, "snowball": SNOWBALL_STEMMER}
 
 
 def build_doc_text(title: str, abstract: str) -> str:
@@ -101,11 +102,6 @@ def tokenize_for_bm25(
     if not cfg.use_stemming:
         return [t for t in tokens if len(t) >= cfg.min_token_length]
     
-    STEMMERS = {
-        "porter": PORTER_STEMMER,
-        "snowball": SNOWBALL_STEMMER,
-        }
-
     stemmer = STEMMERS.get(cfg.stemmer)
     if stemmer is None:
         raise ValueError(

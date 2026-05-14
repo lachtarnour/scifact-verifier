@@ -40,10 +40,6 @@ class BM25Retriever(BaseRetriever):
     # ── Build / load ──────────────────────────────────────────────
 
     def build(self, corpus: CorpusType) -> None:
-        logger.info(
-            "Building BM25 index (scenario='%s') over %d documents …",
-            self.scenario_name, len(corpus),
-        )
         doc_ids, doc_texts = get_flat_corpus(corpus)
         tokenized = [
             tokenize_for_bm25(text, self.tokenizer_config)
@@ -52,22 +48,18 @@ class BM25Retriever(BaseRetriever):
         self.bm25 = BM25Okapi(tokenized)
         self.doc_ids = doc_ids
         self._save()
-        logger.info("BM25 index (scenario='%s') built and saved.", self.scenario_name)
+        logger.info("BM25 built: %d docs, scenario=%s", len(doc_ids), self.scenario_name)
 
     def load(self) -> bool:
         path = _index_path(self.scenario_name)
         if not path.exists():
             return False
-        logger.info("Loading BM25 index (scenario='%s') …", self.scenario_name)
         with open(path, "rb") as f:
             data = pickle.load(f)
         self.bm25 = data["bm25"]
         self.doc_ids = data["doc_ids"]
         self.tokenizer_config = data["tokenizer_config"]
-        logger.info(
-            "BM25 index loaded: %d documents, scenario='%s'.",
-            len(self.doc_ids), self.scenario_name,
-        )
+        logger.info("BM25 loaded: %d docs", len(self.doc_ids))
         return True
 
     def _save(self) -> None:

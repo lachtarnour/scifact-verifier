@@ -9,9 +9,12 @@ because they see the query and document together.
 Model: cross-encoder/ms-marco-MiniLM-L-6-v2 — fast and accurate.
 """
 
+import warnings
 from typing import Dict, List
 
 from sentence_transformers import CrossEncoder
+
+warnings.filterwarnings("ignore", message=".*cache_dir.*deprecated.*")
 
 from src.data.load_scifact import CorpusType
 from src.data.preprocess import build_doc_text
@@ -28,8 +31,12 @@ class Reranker:
 
     def _load(self) -> None:
         if self._model is None:
-            logger.info("Loading cross-encoder: %s …", self.model_name)
-            self._model = CrossEncoder(self.model_name, max_length=512)
+            logger.info("Cross-encoder: %s", self.model_name)
+            self._model = CrossEncoder(
+                self.model_name,
+                max_length=512,
+                model_kwargs={"cache_dir": str(config.INDEX_DIR / "models")},
+            )
 
     def rerank(
         self,
@@ -67,8 +74,8 @@ class RerankedRetriever(BaseRetriever):
     def __init__(
         self,
         base_retriever,
+        reranker,
         corpus,
-        reranker = Reranker(),
         candidate_k: int = 50,
     ):
         self.base_retriever = base_retriever
@@ -76,11 +83,7 @@ class RerankedRetriever(BaseRetriever):
         self.corpus = corpus
         self.candidate_k = candidate_k
 
-    def load(self) -> bool:
-        return self.base_retriever.load()
-    
-
-    def retrieve(self, query: str, top_k: int | None = None) -> Dict[str, float]:
+    def retrieve(self, query: str, top_k: int = 10):
         candidates = self.base_retriever.retrieve(
             query,
             top_k=self.candidate_k,
@@ -90,5 +93,5 @@ class RerankedRetriever(BaseRetriever):
             query=query,
             candidates=candidates,
             corpus=self.corpus,
-            top_k=top_k
+            top_k=top_k,
         )

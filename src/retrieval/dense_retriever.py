@@ -1,11 +1,16 @@
+import os
 import pickle
 import time
+import warnings
 from typing import Dict, List
 
 import faiss
 import numpy as np
 import torch
 from sentence_transformers import SentenceTransformer
+
+warnings.filterwarnings("ignore", message=".*cache_dir.*deprecated.*")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 from src.data.load_scifact import CorpusType
 from src.data.preprocess import get_flat_corpus
@@ -37,7 +42,7 @@ def _optimal_batch_size(device: str) -> int:
     return {
         "mps": 128,
         "cuda": 256,
-        "cpu": 32,
+        "cpu": 128,
     }[device]
 
 
@@ -55,15 +60,12 @@ class DenseRetriever(BaseRetriever):
         if self.model is not None:
             return
 
-        logger.info(
-            "Loading embedding model: %s (device=%s) …",
-            self.model_name,
-            self._device,
-        )
+        logger.info("Embedding model: %s (%s)", self.model_name, self._device)
 
         self.model = SentenceTransformer(
             self.model_name,
             device=self._device,
+            model_kwargs={"cache_dir": str(config.INDEX_DIR / "models")},
         )
 
     def build(self, corpus: CorpusType, batch_size: int | None = None) -> None:
@@ -77,31 +79,33 @@ class DenseRetriever(BaseRetriever):
         n = len(doc_ids)
         bs = batch_size or _optimal_batch_size(self._device)
 
-        logger.info(
-            "Encoding %d documents — model=%s, device=%s, batch_size=%d …",
-            n,
-            self.model_name,
-            self._device,
-            bs,
-        )
+        logger.info("Encoding %d docs (batch=%d)", n, bs)
 
         t0 = time.time()
 
-        embeddings = self.model.encode(
-            doc_texts,
-            batch_size=bs,
-            show_progress_bar=True,
-            normalize_embeddings=True,
-            convert_to_numpy=True,
-        ).astype(np.float32)
+        total_batches = (n + bs - 1) // bs
+        all_embeddings = []
+
+        for i in range(0, n, bs):
+            batch_num = i // bs + 1
+            batch = doc_texts[i : i + bs]
+            emb = self.model.encode(
+                batch,
+                batch_size=bs,
+                show_progress_bar=False,
+                normalize_embeddings=True,
+                convert_to_numpy=True,
+            )
+            all_embeddings.append(emb)
+            if batch_num % 20 == 0 or batch_num == total_batches:
+                pct = 100 * min(i + bs, n) // n
+                logger.info("  %d%% (%d/%d)", pct, min(i + bs, n), n)
+
+        embeddings = np.vstack(all_embeddings).astype(np.float32)
 
         elapsed = time.time() - t0
 
-        logger.info(
-            "Encoding done in %.1f s (%.1f docs/s).",
-            elapsed,
-            n / elapsed if elapsed > 0 else float("inf"),
-        )
+        logger.info("Encoded in %.1fs", elapsed)
 
         if embeddings.ndim != 2:
             raise RuntimeError(f"Invalid embedding shape: {embeddings.shape}")
@@ -114,18 +118,11 @@ class DenseRetriever(BaseRetriever):
 
         self._save()
 
-        logger.info(
-            "Dense index built: %d vectors of dim %d.",
-            self.index.ntotal,
-            dimension,
-        )
+        logger.info("Dense built: %d vectors, dim=%d", self.index.ntotal, dimension)
 
     def load(self) -> bool:
         if not _FAISS_PATH.exists() or not _META_PATH.exists():
-            logger.warning("No existing dense index found at %s.", _FAISS_PATH)
             return False
-
-        logger.info("Loading FAISS index …")
 
         self.index = faiss.read_index(str(_FAISS_PATH))
 
@@ -140,17 +137,10 @@ class DenseRetriever(BaseRetriever):
 
         if self.index.ntotal != len(self.doc_ids):
             raise RuntimeError(
-                "Corrupted dense index: FAISS contains "
-                f"{self.index.ntotal} vectors but metadata contains "
-                f"{len(self.doc_ids)} doc_ids."
+                f"Corrupted index: {self.index.ntotal} vectors vs {len(self.doc_ids)} doc_ids"
             )
 
-        logger.info(
-            "Dense index loaded (%d vectors, dim=%d, model=%s).",
-            self.index.ntotal,
-            self.index.d,
-            self.model_name,
-        )
+        logger.info("Dense loaded: %d vectors", self.index.ntotal)
 
         return True
 

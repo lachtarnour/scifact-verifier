@@ -1,4 +1,4 @@
-from .config import config , TokenizerConfig
+from .config import config
 from .logging_utils import get_logger
 
 __all__ = ["config", "get_logger"]

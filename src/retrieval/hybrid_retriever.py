@@ -71,9 +71,7 @@ class HybridRetriever(BaseRetriever):
         """Return top-k documents fused from all sub-retrievers via RRF."""
         k = top_k or config.TOP_K_HYBRID
 
-        all_results = [
-            r.retrieve(query, top_k=top_k) for r in self.retrievers
-        ]
+        all_results = [r.retrieve(query) for r in self.retrievers]
 
         fused = reciprocal_rank_fusion(all_results, k=rrf_k or config.RRF_K)
         ranked = sorted(fused.items(), key=lambda x: x[1], reverse=True)
