@@ -1,0 +1,29 @@
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    environment:
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-mistral}
+      - HF_HOME=/cache/huggingface
+      - HUGGINGFACE_HUB_CACHE=/cache/huggingface/hub
+      - SENTENCE_TRANSFORMERS_HOME=/cache/sentence_transformers
+      - HF_DATASETS_DISABLE_PROGRESS_BARS=1
+      - TRANSFORMERS_NO_ADVISORY_WARNINGS=1
+      - TOKENIZERS_PARALLELISM=false
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - .:/app
+      - scifact-data:/app/data
+      - hf-cache:/cache/huggingface
+      - st-cache:/cache/sentence_transformers
+    restart: unless-stopped
+
+volumes:
+  scifact-data:
+  hf-cache:
+  st-cache:

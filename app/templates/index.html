@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1 class="logo">SciFact<span>Verifier</span></h1>
+      <p class="logo-sub">Scientific Claim Verification</p>
+    </div>
+
+    <div class="sidebar-section">
+      <label class="sidebar-label">Retrieval mode</label>
+      <select id="modeSelect" class="mode-select">
+        <option value="hybrid_rerank" selected>Hybrid + Reranker</option>
+        <option value="hybrid">Hybrid (RRF)</option>
+        <option value="dense">Dense only</option>
+        <option value="bm25">BM25 only</option>
+      </select>
+    </div>
+
+    <div class="sidebar-section">
+      <label class="sidebar-label">LLM Model</label>
+      <select id="modelSelect" class="mode-select">
+        <option value="qwen2:0.5b">Qwen2 0.5B (fast)</option>
+        <option value="tinyllama">TinyLlama 1.1B</option>
+        <option value="phi3">Phi 3 (3.8B)</option>
+        <option value="mistral" selected>Mistral (7B)</option>
+        <option value="llama3">Llama 3 (8B)</option>
+        <option value="gemma">Gemma (7B)</option>
+      </select>
+    </div>
+
+    <div class="sidebar-section">
+      <label class="sidebar-label">Try an example</label>
+      <div class="examples">
+        <button class="example-btn" data-claim="Statins reduce the risk of atrial fibrillation after coronary artery bypass surgery.">Statins &amp; atrial fibrillation</button>
+        <button class="example-btn" data-claim="Vitamin D supplementation reduces the risk of respiratory infections.">Vitamin D &amp; infections</button>
+        <button class="example-btn" data-claim="BRCA2 mutations are associated with increased risk of ovarian cancer.">BRCA2 &amp; ovarian cancer</button>
+        <button class="example-btn" data-claim="Physical exercise reduces depressive symptoms in patients with major depressive disorder.">Exercise &amp; depression</button>
+        <button class="example-btn" data-claim="Metformin reduces all-cause mortality in patients with type 2 diabetes.">Metformin &amp; mortality</button>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-info">5 183 abstracts &bull; SciFact</div>
+      <div class="sidebar-info">BM25 &bull; Dense &bull; Reranking &bull; LLM</div>
+    </div>
+  </aside>
+
+  <!-- Chat area -->
+  <main class="chat-main">
+
+    <div class="messages" id="messages">
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">&#x1F52C;</div>
+        <h2>Verify a scientific claim</h2>
+        <p>Enter a biomedical claim. The system retrieves relevant
+           peer-reviewed abstracts and generates a grounded analysis.</p>
+      </div>
+    </div>
+
+    <div class="input-bar">
+      <form id="chatForm" class="input-form">
+        <textarea
+          id="claimInput"
+          class="claim-input"
+          placeholder="Enter a scientific claim to verify..."
+          rows="1"
+          maxlength="500"
+          required
+        ></textarea>
+        <button type="submit" class="send-btn" id="sendBtn" title="Verify">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </form>
+    </div>
+
+  </main>
+</div>
+
+<!-- Evaluation metrics table -->
+<div class="metrics-panel" id="metricsPanel">
+  <div class="metrics-header">
+    <h3 class="metrics-title">Retrieval Evaluation</h3>
+    <button class="metrics-toggle" id="metricsToggle" title="Toggle metrics">&#9650;</button>
+  </div>
+  <div class="metrics-body" id="metricsBody">
+    <table class="metrics-table" id="metricsTable">
+      <thead>
+        <tr>
+          <th>Retriever</th>
+          <th>Recall@1</th>
+          <th>Recall@5</th>
+          <th>Recall@10</th>
+          <th>P@5</th>
+          <th>MRR</th>
+          <th>nDCG@10</th>
+          <th>ms/query</th>
+        </tr>
+      </thead>
+      <tbody id="metricsTableBody">
+        <tr><td colspan="8" class="metrics-empty">No evaluation data. Run <code>python -m src.evaluation</code> to generate.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
