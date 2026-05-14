@@ -2,3 +2,4 @@ dev.ipynb
 .venv/
 __pycache__/
 data/
+.DS_Store
