@@ -12,7 +12,7 @@ from nltk.corpus import stopwords as nltk_stopwords
 from nltk.stem import PorterStemmer, SnowballStemmer
 
 from .load_scifact import CorpusType
-from src.utils.config import TokenizerConfig, config
+from src.utils.config import TokenizerConfig, Config
 
 
 try:
