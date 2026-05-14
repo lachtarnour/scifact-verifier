@@ -1,5 +1,38 @@
-dev.ipynb 
-.venv/
+# Environment
+.env
+*.env
+
+# Python
 __pycache__/
-data/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Data & indexes (large binary files — re-generate with setup_indexes.py)
+data/raw/
+data/processed/
+data/indexes/
+
+# Reports (generated — not source code)
+reports/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
