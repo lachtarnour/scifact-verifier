@@ -71,6 +71,8 @@ def get_flat_corpus(corpus: CorpusType) -> Tuple[List[str], List[str]]:
     return doc_ids, doc_texts
 
 
+
+
 def tokenize_for_bm25(
     text: str,
     tokenizer_config: TokenizerConfig | None = None,
@@ -85,47 +87,36 @@ def tokenize_for_bm25(
 
     text = text.lower().strip()
 
-    if cfg.preserve_scientific_terms:
-        token_pattern = r"\b[a-z0-9]+(?:-[a-z0-9]+)*\b"
-    else:
-        token_pattern = r"\b[a-z0-9]+\b"
+    token_pattern = (
+        r"\b[a-z0-9]+(?:-[a-z0-9]+)*\b"
+        if cfg.preserve_scientific_terms
+        else r"\b[a-z0-9]+\b"
+    )
 
     tokens = re.findall(token_pattern, text)
 
-    tokens = [
-        token
-        for token in tokens
-        if len(token) >= cfg.min_token_length
-    ]
-
     if cfg.use_stop_words:
-        tokens = [
-            token
-            for token in tokens
-            if token not in ALL_STOP_WORDS
-        ]
+        tokens = [t for t in tokens if t not in ALL_STOP_WORDS]
 
     if not cfg.use_stemming:
-        return tokens
+        return [t for t in tokens if len(t) >= cfg.min_token_length]
+    
+    STEMMERS = {
+        "porter": PORTER_STEMMER,
+        "snowball": SNOWBALL_STEMMER,
+        }
 
-    if cfg.stemmer == "porter":
-        stemmer = PORTER_STEMMER
-    elif cfg.stemmer == "snowball":
-        stemmer = SNOWBALL_STEMMER
-    else:
+    stemmer = STEMMERS.get(cfg.stemmer)
+    if stemmer is None:
         raise ValueError(
             f"Unsupported stemmer '{cfg.stemmer}'. "
-            "Expected 'porter' or 'snowball'."
+            f"Expected one of: {list(STEMMERS.keys())}"
         )
 
-    stemmed_tokens = []
+    tokens = [
+        t if (cfg.preserve_scientific_terms and "-" in t)
+        else stemmer.stem(t)
+        for t in tokens
+    ]
 
-    for token in tokens:
-        # If scientific terms are preserved, keep hyphenated expressions intact.
-        # Example: "covid-19", "il-6", "tnf-alpha".
-        if cfg.preserve_scientific_terms and "-" in token:
-            stemmed_tokens.append(token)
-        else:
-            stemmed_tokens.append(stemmer.stem(token))
-
-    return stemmed_tokens
+    return [t for t in tokens if len(t) >= cfg.min_token_length]
