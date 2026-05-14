@@ -1,11 +1,9 @@
 """
-Local LLM generator via Ollama.
-
-Default backend — no API key needed.
-Requires Ollama running locally or in Docker (http://localhost:11434).
+Local LLM via Ollama — default backend, no API key needed.
 """
 
 import json
+import time
 from typing import Dict, Generator, List
 
 import requests
@@ -16,6 +14,13 @@ from src.rag.prompt_builder import SYSTEM_PROMPT, build_user_prompt
 from src.utils import config, get_logger
 
 logger = get_logger(__name__)
+
+_MAX_RETRIES = 5
+_RETRY_DELAY = 3
+
+_OLLAMA_OPTIONS = {
+    "temperature": 0,
+}
 
 
 class OllamaGenerator(BaseGenerator):
@@ -30,7 +35,28 @@ class OllamaGenerator(BaseGenerator):
     def _api_url(self, endpoint: str) -> str:
         return f"{self.base_url}{endpoint}"
 
-    # ── Full generation ──────────────────────────────────────────
+    def _messages(self, claim: str, doc_ids: List[str], corpus: CorpusType) -> list:
+        return [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": build_user_prompt(claim, doc_ids, corpus)},
+        ]
+
+    def _post(self, body: dict, stream: bool = False) -> requests.Response:
+        for attempt in range(1, _MAX_RETRIES + 1):
+            try:
+                resp = requests.post(
+                    self._api_url("/api/chat"),
+                    json=body,
+                    stream=stream,
+                    timeout=120,
+                )
+                resp.raise_for_status()
+                return resp
+            except (requests.ConnectionError, requests.HTTPError) as e:
+                if attempt == _MAX_RETRIES:
+                    raise
+                logger.info("Ollama unavailable, retry %d/%d", attempt, _MAX_RETRIES)
+                time.sleep(_RETRY_DELAY)
 
     def generate(
         self,
@@ -38,32 +64,30 @@ class OllamaGenerator(BaseGenerator):
         doc_ids: List[str],
         corpus: CorpusType,
     ) -> Dict:
-        user_prompt = build_user_prompt(claim, doc_ids, corpus)
-
         logger.info("Ollama %s — %s", self.model, claim[:60])
 
-        response = requests.post(
-            self._api_url("/api/chat"),
-            json={
-                "model": self.model,
-                "stream": False,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-            },
-            timeout=120,
-        )
-        response.raise_for_status()
-        data = response.json()
+        resp = self._post({
+            "model": self.model,
+            "stream": False,
+            "format": "json",
+            "options": _OLLAMA_OPTIONS,
+            "messages": self._messages(claim, doc_ids, corpus),
+        })
 
-        content = data.get("message", {}).get("content", "")
-
+        content = resp.json().get("message", {}).get("content", "")
         logger.info("Response: %d chars", len(content))
 
-        return {"content": content}
-
-    # ── Streaming ────────────────────────────────────────────────
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            return {
+                "verdict": "NOT ENOUGH INFO",
+                "confidence": 0.0,
+                "explanation": "Model did not return valid JSON.",
+                "cited_docs": [],
+                "evidence": [],
+                "raw_output": content,
+            }
 
     def stream(
         self,
@@ -71,31 +95,24 @@ class OllamaGenerator(BaseGenerator):
         doc_ids: List[str],
         corpus: CorpusType,
     ) -> Generator[str, None, None]:
-        user_prompt = build_user_prompt(claim, doc_ids, corpus)
-
         logger.info("Streaming %s — %s", self.model, claim[:60])
 
-        response = requests.post(
-            self._api_url("/api/chat"),
-            json={
+        resp = self._post(
+            {
                 "model": self.model,
                 "stream": True,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
+                "format": "json",
+                "options": _OLLAMA_OPTIONS,
+                "messages": self._messages(claim, doc_ids, corpus),
             },
             stream=True,
-            timeout=120,
         )
-        response.raise_for_status()
 
-        for line in response.iter_lines(decode_unicode=True):
+        for line in resp.iter_lines(decode_unicode=True):
             if not line:
                 continue
             try:
-                chunk = json.loads(line)
-                token = chunk.get("message", {}).get("content", "")
+                token = json.loads(line).get("message", {}).get("content", "")
                 if token:
                     yield token
             except json.JSONDecodeError:

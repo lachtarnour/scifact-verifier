@@ -1,9 +1,9 @@
 """
 Claude API generator (optional).
-
-Used only if ANTHROPIC_API_KEY is set in environment.
+Used only if ANTHROPIC_API_KEY is set.
 """
 
+import json
 from typing import Dict, Generator, List
 
 import anthropic
@@ -26,8 +26,6 @@ class ClaudeGenerator(BaseGenerator):
             self._client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
         return self._client
 
-    # ── Full generation ──────────────────────────────────────────
-
     def generate(
         self,
         claim: str,
@@ -42,7 +40,7 @@ class ClaudeGenerator(BaseGenerator):
         response = client.messages.create(
             model=self.model,
             max_tokens=config.MAX_TOKENS,
-            temperature=config.TEMPERATURE,
+            temperature=0,
             system=[
                 {
                     "type": "text",
@@ -54,12 +52,19 @@ class ClaudeGenerator(BaseGenerator):
         )
 
         content = response.content[0].text
-
         logger.info("Response: %d tokens", response.usage.output_tokens)
 
-        return {"content": content}
-
-    # ── Streaming ────────────────────────────────────────────────
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            return {
+                "verdict": "NOT ENOUGH INFO",
+                "confidence": 0.0,
+                "explanation": "Model did not return valid JSON.",
+                "cited_docs": [],
+                "evidence": [],
+                "raw_output": content,
+            }
 
     def stream(
         self,
@@ -75,7 +80,7 @@ class ClaudeGenerator(BaseGenerator):
         with client.messages.stream(
             model=self.model,
             max_tokens=config.MAX_TOKENS,
-            temperature=config.TEMPERATURE,
+            temperature=0,
             system=[
                 {
                     "type": "text",
