@@ -86,4 +86,10 @@ Example results:
 
 ## Limitations
 
-This is a practical prototype. Retrieved abstracts may be related without directly supporting the claim, so verdicts are post-processed and should not be interpreted as medical advice.
+This is a practical RAG prototype, not a production-grade verification system.
+
+It uses a local Ollama `mistral` model, 7.2B, Q4_K_M, which may confuse related evidence with direct support.
+
+The retrieval stack uses standard methods: BM25, SPECTER, FAISS, RRF and a pretrained reranker; the dense retriever is not fine-tuned on SciFact.
+
+Evaluation relies on official SciFact qrels, so unjudged documents are treated as non-relevant.
