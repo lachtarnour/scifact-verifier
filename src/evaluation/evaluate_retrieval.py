@@ -24,7 +24,7 @@ def evaluate_retrieval(
     t0 = time.time()
 
     for qid, query in tqdm(queries.items(), desc=name, unit="query"):
-        results[qid] = retriever.retrieve(query, top_k=top_k)
+        results[qid] = retriever.(query, top_k=top_k)
 
     elapsed = time.time() - t0
 

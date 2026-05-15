@@ -227,56 +227,33 @@ body {
 .send-btn:hover { background: #1d4ed8; }
 .send-btn:disabled { background: #d1d5db; cursor: not-allowed; }
 
-/* ── Metrics panel ── */
-.metrics-panel {
-  position: fixed; bottom: 0; left: var(--sidebar-w); right: 0;
-  background: #fff; border-top: 1px solid var(--border);
-  z-index: 10; font-size: 0.78rem;
+/* ── Sidebar metrics ── */
+.sidebar-metrics {
+  display: flex; flex-direction: column; gap: 0.4rem;
 }
-.metrics-header {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 0.4rem 1rem;
+.metric-row {
+  padding: 0.4rem 0.5rem; border: 1px solid var(--border);
+  border-radius: 0.4rem; background: var(--gray-bg);
 }
-.metrics-title {
-  font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.04em; color: var(--text-muted);
+.metric-name {
+  font-size: 0.72rem; font-weight: 600; color: var(--text);
+  margin-bottom: 0.2rem;
 }
-.metrics-toggle {
-  background: none; border: none; cursor: pointer;
-  font-size: 0.7rem; color: var(--text-muted); padding: 0.2rem 0.4rem;
+.metric-stats {
+  display: flex; justify-content: space-between; gap: 0.3rem;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.68rem; color: var(--text-muted);
 }
-.metrics-toggle:hover { color: var(--accent); }
-.metrics-body { padding: 0 1rem 0.5rem; }
-.metrics-body.collapsed { display: none; }
-.metrics-table {
-  width: 100%; border-collapse: collapse; text-align: right;
+.metrics-empty-small {
+  font-size: 0.7rem; color: var(--text-muted); padding: 0.4rem 0;
 }
-.metrics-table th {
-  font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.03em; color: var(--text-muted);
-  padding: 0.3rem 0.6rem; border-bottom: 2px solid var(--border);
-  text-align: right;
-}
-.metrics-table th:first-child { text-align: left; }
-.metrics-table td {
-  padding: 0.3rem 0.6rem; border-bottom: 1px solid #f0f0f0;
-  font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.75rem;
-  color: var(--text);
-}
-.metrics-table td:first-child { font-family: inherit; font-weight: 500; text-align: left; }
-.metrics-name { color: var(--text); }
-.metrics-empty {
-  text-align: center !important; color: var(--text-muted);
-  font-family: inherit !important; padding: 1rem 0.6rem !important;
-}
-.metrics-empty code {
-  background: var(--gray-bg); padding: 0.15rem 0.4rem;
-  border-radius: 0.25rem; font-size: 0.72rem;
+.metrics-empty-small code {
+  background: var(--gray-bg); padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem; font-size: 0.65rem;
 }
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .sidebar { display: none; }
   .msg-user .bubble, .msg-bot .bubble { max-width: 95%; }
-  .metrics-panel { left: 0; }
 }

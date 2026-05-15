@@ -43,6 +43,13 @@
       </div>
     </div>
 
+    <div class="sidebar-section">
+      <label class="sidebar-label">Retrieval metrics</label>
+      <div class="sidebar-metrics" id="sidebarMetrics">
+        <div class="metrics-empty-small">Run <code>python -m src.evaluation</code></div>
+      </div>
+    </div>
+
     <div class="sidebar-footer">
       <div class="sidebar-info">5 183 abstracts &bull; SciFact</div>
       <div class="sidebar-info">BM25 &bull; Dense &bull; Reranking &bull; LLM</div>
@@ -84,30 +91,4 @@
   </main>
 </div>
 
-<!-- Evaluation metrics table -->
-<div class="metrics-panel" id="metricsPanel">
-  <div class="metrics-header">
-    <h3 class="metrics-title">Retrieval Evaluation</h3>
-    <button class="metrics-toggle" id="metricsToggle" title="Toggle metrics">&#9650;</button>
-  </div>
-  <div class="metrics-body" id="metricsBody">
-    <table class="metrics-table" id="metricsTable">
-      <thead>
-        <tr>
-          <th>Retriever</th>
-          <th>Recall@1</th>
-          <th>Recall@5</th>
-          <th>Recall@10</th>
-          <th>P@5</th>
-          <th>MRR</th>
-          <th>nDCG@10</th>
-          <th>ms/query</th>
-        </tr>
-      </thead>
-      <tbody id="metricsTableBody">
-        <tr><td colspan="8" class="metrics-empty">No evaluation data. Run <code>python -m src.evaluation</code> to generate.</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
 {% endblock %}

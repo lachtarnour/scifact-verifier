@@ -212,32 +212,32 @@ document.addEventListener('DOMContentLoaded', () => {
     return d.innerHTML;
   }
 
-  // ── Metrics table ─────────────────────────────────────────
-  const metricsToggle = document.getElementById('metricsToggle');
-  const metricsBody   = document.getElementById('metricsBody');
-  const metricsTable  = document.getElementById('metricsTableBody');
-
-  metricsToggle.addEventListener('click', () => {
-    metricsBody.classList.toggle('collapsed');
-    metricsToggle.textContent = metricsBody.classList.contains('collapsed') ? '▼' : '▲';
-  });
+  // ── Sidebar metrics ───────────────────────────────────────
+  const sidebarMetrics = document.getElementById('sidebarMetrics');
 
   async function loadMetrics() {
     try {
       const res = await fetch('/api/metrics');
       if (!res.ok) return;
       const data = await res.json();
-
       if (!data || Object.keys(data).length === 0) return;
 
-      const cols = ['Recall@1', 'Recall@5', 'Recall@10', 'P@5', 'MRR', 'nDCG@10'];
       const rows = Object.entries(data).map(([name, m]) => {
-        const cells = cols.map(c => `<td>${m[c] != null ? m[c].toFixed(4) : '—'}</td>`).join('');
-        const latency = m.latency_ms_per_query != null ? m.latency_ms_per_query.toFixed(1) : '—';
-        return `<tr><td class="metrics-name">${esc(name)}</td>${cells}<td>${latency}</td></tr>`;
+        const recall = m['Recall@5'] != null ? m['Recall@5'].toFixed(3) : '—';
+        const mrr    = m['MRR']      != null ? m['MRR'].toFixed(3)      : '—';
+        const ms     = m.latency_ms_per_query != null ? m.latency_ms_per_query.toFixed(0) + 'ms' : '—';
+        return `
+          <div class="metric-row">
+            <div class="metric-name">${esc(name)}</div>
+            <div class="metric-stats">
+              <span title="Recall@5">R@5 ${recall}</span>
+              <span title="Mean Reciprocal Rank">MRR ${mrr}</span>
+              <span title="Latency per query">${ms}</span>
+            </div>
+          </div>`;
       }).join('');
 
-      metricsTable.innerHTML = rows;
+      sidebarMetrics.innerHTML = rows;
     } catch (e) {
       // keep default empty state
     }
