@@ -1,67 +1,89 @@
 # SciFact RAG Verifier
 
-Vérification de claims scientifiques par RAG sur le dataset [SciFact](https://github.com/allenai/scifact) (5 183 abstracts biomédicaux).
+Simple RAG application for scientific claim verification on the SciFact dataset.
+
+The system retrieves biomedical abstracts, reranks them, and uses a local LLM to return a structured verdict:
+
+```text
+SUPPORTED / REFUTED / NOT ENOUGH INFO
+```
+
+# Interface
+![SciFact RAG Verifier Interface](app/images/image.png)
 
 ## Pipeline
 
+```text
+Claim → BM25 / Dense Retrieval → RRF Fusion → Reranking → LLM → Verdict
 ```
-Claim → BM25 + Dense (SPECTER) → RRF → Cross-encoder → LLM → Verdict
-                                                              (SUPPORTED / REFUTED / NEI)
-```
+
+## Features
+
+- BM25 retrieval
+- FAISS-based dense retrieval with SPECTER
+- RRF hybrid fusion
+- Cross-encoder reranking
+- Local LLM generation with Ollama
+- JSON verdict output
+- Basic post-processing to reduce unsupported answers
+- Flask interface with streaming responses
+
+## Stack
+
+Python, Flask, FAISS, sentence-transformers, rank-bm25, Ollama.
 
 ## Quick Start
 
-### Local
-
 ```bash
 pip install -r requirements.txt
-ollama pull mistral && ollama serve &
+
+ollama pull mistral
+ollama serve
+
 python setup_indexes.py
 python run.py
-# → http://localhost:5000
 ```
 
-### Docker
+Open:
+
+```text
+http://localhost:5000
+```
+
+## Configuration
+
+Example `.env`:
 
 ```bash
-cp .env.example .env
-docker compose up --build
+OLLAMA_MODEL=mistral
+OLLAMA_URL=http://localhost:11434
+FLASK_DEBUG=False
 ```
-
-Sur Mac Apple Silicon, Ollama tourne sur l'hôte (Metal) et le container l'atteint via `host.docker.internal`. Lance Ollama avec `OLLAMA_HOST=0.0.0.0:11434 ollama serve`.
 
 ## API
 
-| Endpoint | Méthode | Description |
-|---|---|---|
-| `/api/chat` | POST | SSE streaming — retrieval + génération |
-| `/api/search` | POST | Retrieval seul |
-| `/api/health` | GET | Status |
+| Endpoint | Description |
+|---|---|
+| `/api/chat` | Retrieval + streamed generation |
+| `/api/search` | Retrieval only |
+| `/api/health` | Health check |
+| `/api/metrics` | Retrieval metrics |
 
-```bash
-curl -X POST http://localhost:5000/api/search \
-  -H "Content-Type: application/json" \
-  -d '{"claim": "Statins reduce atrial fibrillation risk."}'
-```
-
-## Évaluation
+## Evaluation
 
 ```bash
 python -m src.evaluation
 ```
 
-Compare BM25, Dense, Hybrid, Hybrid+Reranker (Recall@5, nDCG@10, MRR).
+Example results:
 
-## Configuration
+| Retriever | R@5 | nDCG | MRR |
+|---|---:|---:|---:|
+| BM25 | 0.739 | 0.674 | 0.634 |
+| Dense | 0.402 | 0.356 | 0.314 |
+| Hybrid | 0.659 | 0.580 | 0.523 |
+| Hybrid + Reranker | 0.758 | 0.700 | 0.667 |
 
-Variables d'environnement (`.env`) :
+## Limitations
 
-```bash
-OLLAMA_MODEL=mistral
-OLLAMA_URL=http://localhost:11434
-ANTHROPIC_API_KEY=        # optionnel, bascule sur Claude
-```
-
-## Stack
-
-Python 3.11, Flask, FAISS, sentence-transformers, rank-bm25, Ollama, Docker.
+This is a practical prototype. Retrieved abstracts may be related without directly supporting the claim, so verdicts are post-processed and should not be interpreted as medical advice.
