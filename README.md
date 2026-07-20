@@ -1,59 +1,68 @@
 # SciFact RAG Verifier
 
-A Flask-based retrieval-augmented generation application for scientific claim verification on the SciFact dataset.
+SciFact RAG Verifier is a research prototype for scientific claim verification on the [SciFact](https://allenai.org/data/scifact) dataset.
 
-Given a scientific claim, the system retrieves candidate biomedical abstracts, reranks the evidence, and asks a local LLM to return a structured verdict:
+The project combines classical information retrieval, dense scientific embeddings, reranking, and local LLM generation to verify biomedical claims against retrieved abstracts.
 
 ```text
 SUPPORTED / REFUTED / NOT ENOUGH INFO
 ```
 
-![SciFact RAG Verifier Interface](app/images/image.png)
-
 ## Demo
 
 ![SciFact Verifier demo](docs/demo-scifact-verifier.gif)
 
-## Architecture
+## Project Status
+
+Implemented:
+
+- Flask web interface for entering and verifying scientific claims
+- Retrieval-only and full RAG API endpoints
+- BM25 lexical retrieval
+- SPECTER2 dense retrieval with FAISS
+- Hybrid retrieval with Reciprocal Rank Fusion
+- Cross-encoder reranking option
+- Local LLM verdict generation through Ollama
+- Retrieval metrics dashboard in the UI
+- Evaluation scripts for SciFact qrels
+- Optional LoRA fine-tuning workflow for the dense retriever
+
+In progress / experimental:
+
+- Improving the dense retriever with fine-tuning
+- Comparing pretrained retrieval, hybrid retrieval, and fine-tuned retrieval
+- Reducing cases where the LLM overstates weak or indirect evidence
+- Improving evaluation beyond retrieval metrics by measuring final verdict quality
+
+## How It Works
 
 ```text
-Claim
-  -> BM25 retrieval
-  -> SPECTER2 dense retrieval
-  -> Reciprocal Rank Fusion
-  -> Cross-encoder reranking
-  -> Local LLM generation
-  -> JSON verdict with cited evidence
+Scientific claim
+  -> Retrieve candidate abstracts with BM25
+  -> Retrieve candidate abstracts with SPECTER2 dense embeddings
+  -> Fuse lexical and dense scores with Reciprocal Rank Fusion
+  -> Optionally rerank candidates with a cross-encoder
+  -> Send the top evidence to a local LLM
+  -> Return a structured verdict with cited evidence
 ```
 
-The retrieval pipeline combines lexical matching and dense scientific embeddings before sending the top evidence candidates to the verifier model.
+The retrieval layer is evaluated separately from generation. This makes it possible to measure whether the system finds the right evidence before analyzing whether the LLM gives the right verdict.
 
-## Features
-
-- BM25 retrieval over SciFact abstracts
-- FAISS dense retrieval with SPECTER2 query/document adapters
-- Reciprocal Rank Fusion for hybrid retrieval
-- Cross-encoder reranking
-- Local LLM generation through Ollama
-- Structured JSON verdict output
-- Flask web interface with streamed responses
-- Retrieval evaluation on SciFact qrels
-- LoRA fine-tuning path for the dense retriever
-
-## Project Structure
+## Repository Structure
 
 ```text
 app/                         Flask app, routes, services, templates, static assets
 src/data/                    SciFact loading and preprocessing
 src/retrieval/               BM25, dense, hybrid, and reranked retrievers
-src/rag/                     Prompting and LLM generator backends
+src/rag/                     Prompt construction and LLM generator backends
 src/evaluation/              Retrieval metrics and evaluation CLI
-src/finetuning/retriever/    SPECTER2 retriever fine-tuning utilities
-docker/training/             GPU training image files
-scripts/ovh/                 OVH AI Training job scripts
+src/finetuning/retriever/    Optional SPECTER2 retriever fine-tuning workflow
+tests/                       Unit tests
 data/                        Local datasets and generated indexes
 reports/                     Generated evaluation reports
 ```
+
+Generated datasets, indexes, reports, model checkpoints, and training artifacts are local outputs. They are not required to understand the source code and should be regenerated when reproducing the project.
 
 ## Requirements
 
@@ -61,13 +70,13 @@ reports/                     Generated evaluation reports
 - Ollama for local LLM inference
 - Enough disk space for SciFact data, embedding models, and FAISS indexes
 
-Install Python dependencies:
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Install and start the default local LLM:
+Install and start the default local model:
 
 ```bash
 ollama pull mistral
@@ -76,81 +85,91 @@ ollama serve
 
 ## Configuration
 
-Create a local `.env` file from the example:
+Create a local environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Core configuration:
+Important settings:
 
 ```bash
 OLLAMA_MODEL=mistral
 OLLAMA_URL=http://localhost:11434
 
+DEVICE=cpu
 SPECTER2_BASE_MODEL=allenai/specter2_base
 SPECTER2_QUERY_ADAPTER=allenai/specter2_adhoc_query
 SPECTER2_DOCUMENT_ADAPTER=allenai/specter2
 DENSE_INDEX_BATCH_SIZE=32
 LLM_TOP_K=5
 
+FLASK_HOST=0.0.0.0
 FLASK_PORT=5000
 ```
 
-See `.env.example` for the full list of available options.
+Use `DEVICE=cuda` or `DEVICE=mps` if your machine supports GPU acceleration.
 
-After fine-tuning a retriever LoRA adapter, add:
+## Reproduce Locally
 
-```bash
-SPECTER2_LORA_ADAPTER=models/retriever/scifact-lora
-```
-
-Then rebuild the dense index.
-
-## Build Indexes
-
-Before running the application, build the BM25 and FAISS indexes:
+Build the local SciFact indexes:
 
 ```bash
 python setup_indexes.py
 ```
 
-If the SPECTER2 adapter, LoRA adapter, or tokenizer configuration changes, rebuild the indexes:
-
-```bash
-python setup_indexes.py --force
-```
-
-To rebuild only the dense FAISS index:
-
-```bash
-python setup_indexes.py --force-dense
-```
-
-## Run the Application
+Run the application:
 
 ```bash
 python run.py
 ```
 
-Open:
+Open the web interface:
 
 ```text
 http://localhost:5000
 ```
 
+Useful rebuild commands:
+
+```bash
+python setup_indexes.py --force
+python setup_indexes.py --force-bm25
+python setup_indexes.py --force-dense
+```
+
+Rebuild the dense index after changing the SPECTER2 base model, adapters, tokenizer settings, or LoRA adapter path.
+
 ## API
 
-| Endpoint | Description |
-|---|---|
-| `/api/chat` | Retrieval plus streamed LLM generation |
-| `/api/search` | Retrieval only |
-| `/api/health` | Service health check |
-| `/api/metrics` | Saved retrieval metrics |
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/chat` | `POST` | Retrieve evidence and stream an LLM verdict |
+| `/api/search` | `POST` | Retrieve evidence without LLM generation |
+| `/api/random-claim` | `GET` | Return a random SciFact claim for testing |
+| `/api/metrics` | `GET` | Return saved retrieval metrics |
+| `/api/health` | `GET` | Check whether the retrieval service is ready |
+
+Example retrieval request:
+
+```bash
+curl -X POST http://localhost:5000/api/search \
+  -H "Content-Type: application/json" \
+  -d '{"claim":"ALDH1 expression is associated with poorer prognosis in breast cancer.","mode":"hybrid"}'
+```
+
+Supported retriever modes:
+
+```text
+bm25
+dense
+hybrid
+hybrid_rerank
+```
 
 ## Evaluation
 
-Evaluate the active application retrievers:
+Evaluate retrieval on SciFact qrels:
 
 ```bash
 python -m src.evaluation \
@@ -159,7 +178,7 @@ python -m src.evaluation \
   --output reports/retrieval_metrics_test.json
 ```
 
-Current results on SciFact `qrels_test` with 300 test claims:
+Current retrieval results on SciFact `qrels_test` with 300 test claims:
 
 | Retriever | Recall@1 | Recall@5 | Recall@10 | P@5 | MRR | nDCG@10 | ms/query |
 |---|---:|---:|---:|---:|---:|---:|---:|
@@ -168,11 +187,11 @@ Current results on SciFact `qrels_test` with 300 test claims:
 | Hybrid | 0.5696 | 0.7812 | 0.8408 | 0.1693 | 0.6800 | 0.7149 | 41.5 |
 | Hybrid + Reranker | 0.5519 | 0.7549 | 0.8196 | 0.1667 | 0.6607 | 0.6934 | 1240.0 |
 
-The strongest retrieval configuration in this run is `Hybrid`. The cross-encoder reranker is substantially slower on CPU and does not improve aggregate test metrics with the current pretrained reranker.
+In this run, `Hybrid` has the best aggregate retrieval score. The cross-encoder reranker is much slower on CPU and does not improve aggregate retrieval metrics with the current pretrained reranker.
 
-## Dense Retriever Fine-Tuning
+## Fine-Tuning the Dense Retriever
 
-The project includes a LoRA fine-tuning workflow for the SPECTER2 dense retriever.
+The project includes an optional LoRA workflow for improving the SPECTER2 dense retriever.
 
 Prepare contrastive training examples:
 
@@ -180,13 +199,13 @@ Prepare contrastive training examples:
 python -m src.finetuning.retriever.prepare_data
 ```
 
-Each example contains:
+Each training example contains:
 
 - a SciFact claim as query
 - a positive abstract from qrels
-- hard negatives mined from BM25 and SPECTER2 retrieval
+- hard negatives mined from BM25 and dense retrieval
 
-The preparation step creates three files:
+Generated files:
 
 ```text
 data/processed/fine_tuning/retriever/train.jsonl
@@ -194,83 +213,13 @@ data/processed/fine_tuning/retriever/validation.jsonl
 data/processed/fine_tuning/retriever/test.jsonl
 ```
 
-`validation.jsonl` is created from the official SciFact train qrels. The official test qrels are kept only for final evaluation.
-
-Train the LoRA adapter. Validation metrics are computed at the end of each epoch from `validation.jsonl`:
+Train the LoRA adapter:
 
 ```bash
 python -m src.finetuning.retriever.train_lora
 ```
 
-The training script writes:
-
-```text
-models/retriever/scifact-lora/training_loss.jsonl
-models/retriever/scifact-lora/validation_metrics.jsonl
-```
-
-### GPU Training on OVH
-
-Build and push the training image for OVH AI Training:
-
-```bash
-docker buildx build \
-  --platform linux/amd64 \
-  --provenance=false \
-  -f docker/training/Dockerfile \
-  -t docker.io/nour474/scifact-retriever-train:lora \
-  --push \
-  .
-```
-
-The dataset archive must contain `data/processed/`, including the fine-tuning `train`, `validation`, and `test` JSONL files. The working object path is:
-
-```text
-scifact-retriever-data/datasets/scifact-retriever-data.tar.gz
-```
-
-Run the job on OVH:
-
-```bash
-RUN_NAME=scifact-lora-$(date +%Y%m%d-%H%M)
-IMAGE=docker.io/nour474/scifact-retriever-train:lora
-CONTAINER=scifact-retriever-data
-DATASTORE=s3gra
-
-ovhai job run \
-  --name "$RUN_NAME" \
-  --flavor ai1-le-1-gpu \
-  --gpu 1 \
-  --volume "$CONTAINER@$DATASTORE/datasets:/data:ro:cache" \
-  --volume "$CONTAINER@$DATASTORE/runs/lora/$RUN_NAME:/workspace/run:rw" \
-  --env DATA_ARCHIVE_PATH=/data/scifact-retriever-data.tar.gz \
-  --env OUTPUT_DIR=/workspace/run/model/scifact-lora \
-  --env REPORT_DIR=/workspace/run/reports \
-  --env ARTIFACT_DIR=/workspace/run/artifacts \
-  --env EPOCHS=3 \
-  --env BATCH_SIZE=64 \
-  --env EVAL_BATCH_SIZE=32 \
-  --env FP16=true \
-  --env REQUIRE_GPU=true \
-  --env WANDB=true \
-  --env WANDB_PROJECT=scifact-retriever \
-  --env WANDB_RUN_NAME="$RUN_NAME" \
-  --env WANDB_API_KEY="$WANDB_API_KEY" \
-  "$IMAGE"
-```
-
-The job writes these files under `runs/lora/$RUN_NAME/` in Object Storage:
-
-```text
-model/scifact-lora/          LoRA adapter
-reports/loss.jsonl           training loss log
-reports/validation_metrics.jsonl
-reports/eval_test.txt        test evaluation
-artifacts/scifact-lora.tar.gz
-artifacts/lora-reports.tar.gz
-```
-
-Evaluate the fine-tuned adapter:
+Evaluate a fine-tuned adapter:
 
 ```bash
 python -m src.finetuning.retriever.evaluate \
@@ -278,16 +227,19 @@ python -m src.finetuning.retriever.evaluate \
   --split test
 ```
 
-Use the adapter in the application:
+Use the adapter in the app:
 
 ```bash
 SPECTER2_LORA_ADAPTER=models/retriever/scifact-lora
-python setup_indexes.py --force
+python setup_indexes.py --force-dense
+python run.py
 ```
+
+This workflow can be run locally or on any GPU environment that supports the required Python dependencies. The repository does not require a specific cloud provider.
 
 ## Tests
 
-Run the unit tests:
+Run the test suite:
 
 ```bash
 pytest -q
@@ -297,4 +249,4 @@ pytest -q
 
 This project is a research and prototyping system, not a production-grade scientific fact-checker.
 
-The LLM may confuse related evidence with direct support, especially when retrieved abstracts are only loosely connected to the claim. Retrieval evaluation uses SciFact qrels, so unjudged documents are treated as non-relevant.
+The system can still fail when retrieved abstracts are incomplete, indirectly related, or not judged in SciFact qrels. The LLM can also overstate weak evidence, so final verdict quality should be evaluated separately from retrieval quality.
