@@ -1,0 +1,9 @@
+# GPU retriever fine-tuning image.
+# PyTorch is provided by the base Docker image.
+python-dotenv>=1.0.0
+transformers>=4.40.0
+accelerate>=0.33.0
+peft>=0.12.0
+adapters>=1.0.0
+tqdm>=4.66.0
+wandb>=0.17.0

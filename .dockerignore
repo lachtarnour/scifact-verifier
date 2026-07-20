@@ -2,6 +2,8 @@
 __pycache__
 *.pyc
 .env
+credential/
+credentials/
 .venv
 venv
 .DS_Store
@@ -11,3 +13,8 @@ reports/
 data/indexes/
 data/raw/
 data/processed/
+models/
+artifacts/
+*.tar.gz
+*.tgz
+user-wNqCN8tVNspE

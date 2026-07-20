@@ -1,6 +1,8 @@
 # Environment
 .env
 *.env
+credential/
+credentials/
 
 # Python
 __pycache__/
@@ -16,9 +18,20 @@ env/
 data/raw/
 data/processed/
 data/indexes/
+*.tar.gz
+*.tgz
 
-# Reports (generated — not source code)
+# Reports
 reports/
+
+# identification of credentials 
+credential/
+credentials/
+
+
+# Model checkpoints
+models/
+artifacts/
 
 # IDE
 .vscode/

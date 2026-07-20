@@ -13,6 +13,10 @@ faiss-cpu>=1.8.0
 # Deep learning (CPU)
 torch>=2.2.0
 transformers>=4.40.0
+accelerate>=0.33.0
+peft>=0.12.0
+adapters>=1.0.0
+wandb>=0.17.0
 
 # Dataset loading
 datasets>=2.20.0
