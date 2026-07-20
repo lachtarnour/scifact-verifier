@@ -1,19 +1,22 @@
 import pickle
-from typing import Dict, List
+from operator import itemgetter
 
 from rank_bm25 import BM25Okapi
 
 from src.data.load_scifact import CorpusType
 from src.data.preprocess import get_flat_corpus, tokenize_for_bm25
 from src.retrieval.base_retriever import BaseRetriever
-from src.utils.config import TokenizerConfig, config
+from src.config import TokenizerConfig, config
 from src.utils import get_logger
 
 logger = get_logger(__name__)
 
 
-def _index_path(scenario_name: str):
-    return config.INDEX_DIR / f"bm25_{scenario_name}.pkl"
+class BM25IndexUnpickler(pickle.Unpickler):
+    def find_class(self, module: str, name: str):
+        if module == "src.utils.config" and name == "TokenizerConfig":
+            return TokenizerConfig
+        return super().find_class(module, name)
 
 
 class BM25Retriever(BaseRetriever):
@@ -21,6 +24,7 @@ class BM25Retriever(BaseRetriever):
         self,
         tokenizer_config: TokenizerConfig | None = None,
         scenario_name: str = "default",
+        persist: bool = True,
     ):
         """
         Parameters
@@ -31,11 +35,14 @@ class BM25Retriever(BaseRetriever):
         scenario_name : str
             Used as part of the index filename so each scenario has
             its own cached index on disk.
+        persist : bool
+            Whether build() should save the index to disk.
         """
         self.tokenizer_config = tokenizer_config or config.tokenizer
         self.scenario_name = scenario_name
+        self.persist = persist
         self.bm25: BM25Okapi | None = None
-        self.doc_ids: List[str] = []
+        self.doc_ids: list[str] = []
 
     # ── Build / load ──────────────────────────────────────────────
 
@@ -47,15 +54,16 @@ class BM25Retriever(BaseRetriever):
         ]
         self.bm25 = BM25Okapi(tokenized)
         self.doc_ids = doc_ids
-        self._save()
+        if self.persist:
+            self._save()
         logger.info("BM25 built: %d docs, scenario=%s", len(doc_ids), self.scenario_name)
 
     def load(self) -> bool:
-        path = _index_path(self.scenario_name)
+        path = config.INDEX_DIR / f"bm25_{self.scenario_name}.pkl"
         if not path.exists():
             return False
         with open(path, "rb") as f:
-            data = pickle.load(f)
+            data = BM25IndexUnpickler(f).load()
         self.bm25 = data["bm25"]
         self.doc_ids = data["doc_ids"]
         self.tokenizer_config = data["tokenizer_config"]
@@ -64,7 +72,7 @@ class BM25Retriever(BaseRetriever):
 
     def _save(self) -> None:
         config.INDEX_DIR.mkdir(parents=True, exist_ok=True)
-        path = _index_path(self.scenario_name)
+        path = config.INDEX_DIR / f"bm25_{self.scenario_name}.pkl"
         with open(path, "wb") as f:
             pickle.dump(
                 {
@@ -78,7 +86,7 @@ class BM25Retriever(BaseRetriever):
 
     # ── Retrieve ──────────────────────────────────────────────────
 
-    def retrieve(self, query: str, top_k: int | None = None) -> Dict[str, float]:
+    def retrieve(self, query: str, top_k: int | None = None) -> dict[str, float]:
         """Return {doc_id: bm25_score} for the top-k documents."""
         if self.bm25 is None:
             raise RuntimeError(
@@ -91,7 +99,7 @@ class BM25Retriever(BaseRetriever):
         scores = self.bm25.get_scores(tokens)
         ranked = sorted(
             zip(self.doc_ids, scores.tolist()),
-            key=lambda x: x[1],
+            key=itemgetter(1),
             reverse=True,
         )
         return {doc_id: score for doc_id, score in ranked[:k]}

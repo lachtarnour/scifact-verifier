@@ -4,14 +4,15 @@ Local LLM via Ollama — default backend, no API key needed.
 
 import json
 import time
-from typing import Dict, Generator, List
+from collections.abc import Generator
 
 import requests
 
 from src.data.load_scifact import CorpusType
 from src.rag.base_generator import BaseGenerator
 from src.rag.prompt_builder import SYSTEM_PROMPT, build_user_prompt
-from src.utils import config, get_logger
+from src.config import config
+from src.utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -32,10 +33,7 @@ class OllamaGenerator(BaseGenerator):
         self.model = model or config.OLLAMA_MODEL
         self.base_url = (base_url or config.OLLAMA_URL).rstrip("/")
 
-    def _api_url(self, endpoint: str) -> str:
-        return f"{self.base_url}{endpoint}"
-
-    def _messages(self, claim: str, doc_ids: List[str], corpus: CorpusType) -> list:
+    def _messages(self, claim: str, doc_ids: list[str], corpus: CorpusType) -> list:
         return [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": build_user_prompt(claim, doc_ids, corpus)},
@@ -45,7 +43,7 @@ class OllamaGenerator(BaseGenerator):
         for attempt in range(1, _MAX_RETRIES + 1):
             try:
                 resp = requests.post(
-                    self._api_url("/api/chat"),
+                    f"{self.base_url}/api/chat",
                     json=body,
                     stream=stream,
                     timeout=120,
@@ -61,9 +59,9 @@ class OllamaGenerator(BaseGenerator):
     def generate(
         self,
         claim: str,
-        doc_ids: List[str],
+        doc_ids: list[str],
         corpus: CorpusType,
-    ) -> Dict:
+    ) -> dict:
         logger.info("Ollama %s — %s", self.model, claim[:60])
 
         resp = self._post({
@@ -92,7 +90,7 @@ class OllamaGenerator(BaseGenerator):
     def stream(
         self,
         claim: str,
-        doc_ids: List[str],
+        doc_ids: list[str],
         corpus: CorpusType,
     ) -> Generator[str, None, None]:
         logger.info("Streaming %s — %s", self.model, claim[:60])

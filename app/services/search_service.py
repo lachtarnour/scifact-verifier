@@ -4,10 +4,11 @@ Search service: retrieval + LLM generation with post-processing.
 
 import json
 import time
-from typing import Dict, Generator, List
+from collections.abc import Generator
 
 from app.services.retrieval_service import RetrievalService
 from src.rag import create_generator
+from src.config import config
 from src.utils import get_logger
 
 logger = get_logger(__name__)
@@ -65,7 +66,7 @@ def search(
     claim: str,
     mode: str = "hybrid_rerank",
     top_k: int = 10,
-) -> Dict:
+) -> dict:
     svc = RetrievalService.get()
     t0 = time.time()
 
@@ -85,7 +86,7 @@ def search(
 def stream_generation(
     claim: str,
     mode: str = "hybrid_rerank",
-    top_k: int = 5,
+    top_k: int | None = None,
     model: str | None = None,
 ) -> Generator[str, None, None]:
     svc = RetrievalService.get()
@@ -96,7 +97,8 @@ def stream_generation(
 
     logger.info("Using LLM model: %s", getattr(gen, "model", "unknown"))
 
-    doc_ids, scores = svc.retrieve(claim, mode=mode, top_k=top_k)
+    k = top_k if top_k is not None else config.LLM_TOP_K
+    doc_ids, scores = svc.retrieve(claim, mode=mode, top_k=k)
     formatted_docs = _format_docs(doc_ids, svc.corpus, scores)
 
     retrieval_data = json.dumps({
@@ -118,10 +120,10 @@ def stream_generation(
 
 
 def _format_docs(
-    doc_ids: List[str],
-    corpus: Dict,
-    scores: Dict[str, float],
-) -> List[Dict]:
+    doc_ids: list[str],
+    corpus: dict,
+    scores: dict[str, float],
+) -> list[dict]:
     result = []
     for i, doc_id in enumerate(doc_ids, start=1):
         doc = corpus.get(doc_id, {})

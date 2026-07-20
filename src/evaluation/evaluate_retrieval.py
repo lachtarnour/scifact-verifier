@@ -1,5 +1,4 @@
 import time
-from typing import Dict
 
 from tqdm import tqdm
 
@@ -10,21 +9,34 @@ from src.retrieval.base_retriever import BaseRetriever
 def evaluate_retrieval(
     name: str,
     retriever: BaseRetriever,
-    queries: Dict[str, str],
-    qrels: Dict,
+    queries: dict[str, str],
+    qrels: dict,
     top_k: int = 10,
-) -> Dict:
+) -> dict:
     """
     Evaluate any retriever exposing:
-        retriever.retrieve(query, top_k) -> Dict[doc_id, score]
+        retriever.retrieve(query, top_k) -> dict[doc_id, score]
+    Optionally uses:
+        retriever.retrieve_many(queries, top_k) -> list[dict[doc_id, score]]
     """
+    if not queries:
+        raise ValueError("Cannot evaluate retrieval with an empty query set.")
 
     results = {}
 
     t0 = time.time()
 
-    for qid, query in tqdm(queries.items(), desc=name, unit="query"):
-        results[qid] = retriever.(query, top_k=top_k)
+    query_items = list(queries.items())
+    if hasattr(retriever, "retrieve_many"):
+        query_texts = [query for _, query in query_items]
+        batch_results = retriever.retrieve_many(query_texts, top_k=top_k)
+        results = {
+            query_id: result
+            for (query_id, _), result in zip(query_items, batch_results)
+        }
+    else:
+        for qid, query in tqdm(query_items, desc=name, unit="query"):
+            results[qid] = retriever.retrieve(query, top_k=top_k)
 
     elapsed = time.time() - t0
 

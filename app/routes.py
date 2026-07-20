@@ -1,12 +1,14 @@
 """Flask routes — chat with streaming SSE."""
 
 import json
-from pathlib import Path
+import random
 
 from flask import Blueprint, Response, jsonify, render_template, request
 
 from app.services import search, stream_generation
-from src.utils import config, get_logger
+from src.config import config
+from src.data import load_queries
+from src.utils import get_logger
 
 logger = get_logger(__name__)
 bp = Blueprint("main", __name__)
@@ -92,6 +94,16 @@ def metrics():
         with open(metrics_path) as f:
             return jsonify(json.load(f))
     return jsonify({})
+
+
+@bp.route("/api/random-claim")
+def random_claim():
+    queries = load_queries()
+    if not queries:
+        return jsonify({"error": "No claims available."}), 503
+
+    query_id, claim = random.choice(list(queries.items()))
+    return jsonify({"id": query_id, "claim": claim})
 
 
 @bp.route("/api/health")

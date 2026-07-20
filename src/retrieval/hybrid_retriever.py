@@ -11,38 +11,35 @@ The retriever list is generic — any combination of BaseRetriever subclasses
 can be fused (BM25 + Dense, Dense + Dense, etc.).
 """
 
-from typing import Dict, List
+from operator import itemgetter
 
 from src.retrieval.base_retriever import BaseRetriever
-from src.utils import config, get_logger
+from src.config import config
+from src.utils import get_logger
 
 logger = get_logger(__name__)
 
 
-def _rrf_score(rank: int, k: int = 60) -> float:
-    return 1.0 / (k + rank)
-
-
 def reciprocal_rank_fusion(
-    results_list: List[Dict[str, float]],
+    results_list: list[dict[str, float]],
     k: int | None = None,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Fuse multiple ranked lists via RRF.
     Each dict maps doc_id → score (only ranking is used, not actual scores).
     Returns a dict of doc_id → fused_score.
     """
     rrf_k = k or config.RRF_K
-    fused: Dict[str, float] = {}
+    fused: dict[str, float] = {}
     for results in results_list:
-        ranked = sorted(results.keys(), key=lambda d: results[d], reverse=True)
+        ranked = sorted(results, key=results.get, reverse=True)
         for rank, doc_id in enumerate(ranked, start=1):
-            fused[doc_id] = fused.get(doc_id, 0.0) + _rrf_score(rank, rrf_k)
+            fused[doc_id] = fused.get(doc_id, 0.0) + 1.0 / (rrf_k + rank)
     return fused
 
 
 class HybridRetriever(BaseRetriever):
-    def __init__(self, retrievers: List[BaseRetriever]):
+    def __init__(self, retrievers: list[BaseRetriever]):
         if len(retrievers) < 2:
             raise ValueError("HybridRetriever requires at least 2 retrievers.")
         self.retrievers = retrievers
@@ -67,12 +64,12 @@ class HybridRetriever(BaseRetriever):
 
     def retrieve(
         self, query: str, top_k: int | None = None, rrf_k: int | None = None
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Return top-k documents fused from all sub-retrievers via RRF."""
         k = top_k or config.TOP_K_HYBRID
 
         all_results = [r.retrieve(query) for r in self.retrievers]
 
         fused = reciprocal_rank_fusion(all_results, k=rrf_k or config.RRF_K)
-        ranked = sorted(fused.items(), key=lambda x: x[1], reverse=True)
+        ranked = sorted(fused.items(), key=itemgetter(1), reverse=True)
         return {doc_id: score for doc_id, score in ranked[:k]}

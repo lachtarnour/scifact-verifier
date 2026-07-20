@@ -2,8 +2,6 @@
 Prompt construction for scientific claim verification.
 """
 
-from typing import List
-
 from src.data.load_scifact import CorpusType
 
 
@@ -37,7 +35,7 @@ Respond with valid JSON only, no extra text:
 
 def build_user_prompt(
     claim: str,
-    doc_ids: List[str],
+    doc_ids: list[str],
     corpus: CorpusType,
 ) -> str:
     lines = [f"CLAIM: {claim}\n", "ABSTRACTS:"]

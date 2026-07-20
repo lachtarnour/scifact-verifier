@@ -7,11 +7,14 @@ All functions accept:
 """
 
 import math
-from typing import Dict
 
 
-QrelsType = Dict[str, Dict[str, int]]
-ResultsType = Dict[str, Dict[str, float]]
+QrelsType = dict[str, dict[str, int]]
+ResultsType = dict[str, dict[str, float]]
+
+
+def ranked_doc_ids(scores: dict[str, float]) -> list[str]:
+    return sorted(scores, key=scores.get, reverse=True)
 
 
 def recall_at_k(qrels: QrelsType, results: ResultsType, k: int = 5) -> float:
@@ -20,7 +23,7 @@ def recall_at_k(qrels: QrelsType, results: ResultsType, k: int = 5) -> float:
         if qid not in results:
             scores.append(0.0)
             continue
-        ranked = sorted(results[qid].keys(), key=lambda d: results[qid][d], reverse=True)
+        ranked = ranked_doc_ids(results[qid])
         top_k = set(ranked[:k])
         relevant_set = {d for d, r in relevant.items() if r > 0}
         if not relevant_set:
@@ -35,7 +38,7 @@ def precision_at_k(qrels: QrelsType, results: ResultsType, k: int = 5) -> float:
         if qid not in results:
             scores.append(0.0)
             continue
-        ranked = sorted(results[qid].keys(), key=lambda d: results[qid][d], reverse=True)
+        ranked = ranked_doc_ids(results[qid])
         top_k = ranked[:k]
         relevant_set = {d for d, r in relevant.items() if r > 0}
         hits = sum(1 for d in top_k if d in relevant_set)
@@ -49,7 +52,7 @@ def mean_reciprocal_rank(qrels: QrelsType, results: ResultsType) -> float:
         if qid not in results:
             scores.append(0.0)
             continue
-        ranked = sorted(results[qid].keys(), key=lambda d: results[qid][d], reverse=True)
+        ranked = ranked_doc_ids(results[qid])
         relevant_set = {d for d, r in relevant.items() if r > 0}
         rr = 0.0
         for rank, doc_id in enumerate(ranked, start=1):
@@ -69,7 +72,7 @@ def ndcg_at_k(qrels: QrelsType, results: ResultsType, k: int = 10) -> float:
         if qid not in results:
             scores.append(0.0)
             continue
-        ranked = sorted(results[qid].keys(), key=lambda d: results[qid][d], reverse=True)
+        ranked = ranked_doc_ids(results[qid])
         ranked_rels = [relevant.get(d, 0) for d in ranked[:k]]
         ideal_rels = sorted(relevant.values(), reverse=True)[:k]
         ideal_dcg = dcg(ideal_rels)
@@ -81,7 +84,7 @@ def ndcg_at_k(qrels: QrelsType, results: ResultsType, k: int = 10) -> float:
 
 def compute_all_metrics(
     qrels: QrelsType, results: ResultsType
-) -> Dict[str, float]:
+) -> dict[str, float]:
     return {
         "Recall@1":  round(recall_at_k(qrels, results, k=1),  4),
         "Recall@5":  round(recall_at_k(qrels, results, k=5),  4),

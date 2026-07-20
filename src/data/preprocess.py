@@ -6,13 +6,12 @@ The same tokenizer configuration must be used at indexing and query time.
 """
 
 import re
-from typing import List, Tuple
 
 from nltk.corpus import stopwords as nltk_stopwords
 from nltk.stem import PorterStemmer, SnowballStemmer
 
 from .load_scifact import CorpusType
-from src.utils.config import TokenizerConfig, config
+from src.config import TokenizerConfig, config
 
 
 try:
@@ -53,14 +52,14 @@ def build_doc_text(title: str, abstract: str) -> str:
     return f"{title}{separator}{abstract}"
 
 
-def get_flat_corpus(corpus: CorpusType) -> Tuple[List[str], List[str]]:
+def get_flat_corpus(corpus: CorpusType) -> tuple[list[str], list[str]]:
     """
     Convert the corpus dictionary into parallel lists of document IDs and texts.
 
     The resulting texts are used for indexing, retrieval and evaluation.
     """
-    doc_ids: List[str] = []
-    doc_texts: List[str] = []
+    doc_ids: list[str] = []
+    doc_texts: list[str] = []
 
     for doc_id, document in corpus.items():
         title = document.get("title", "")
@@ -71,13 +70,10 @@ def get_flat_corpus(corpus: CorpusType) -> Tuple[List[str], List[str]]:
 
     return doc_ids, doc_texts
 
-
-
-
 def tokenize_for_bm25(
     text: str,
     tokenizer_config: TokenizerConfig | None = None,
-) -> List[str]:
+) -> list[str]:
     """
     Tokenize text for BM25 indexing and querying.
 
@@ -101,7 +97,7 @@ def tokenize_for_bm25(
 
     if not cfg.use_stemming:
         return [t for t in tokens if len(t) >= cfg.min_token_length]
-    
+
     stemmer = STEMMERS.get(cfg.stemmer)
     if stemmer is None:
         raise ValueError(

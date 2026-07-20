@@ -1,7 +1,7 @@
 """Abstract base class for LLM generators."""
 
 from abc import ABC, abstractmethod
-from typing import Dict, Generator, List
+from collections.abc import Generator
 
 from src.data.load_scifact import CorpusType
 
@@ -17,9 +17,9 @@ class BaseGenerator(ABC):
     def generate(
         self,
         claim: str,
-        doc_ids: List[str],
+        doc_ids: list[str],
         corpus: CorpusType,
-    ) -> Dict:
+    ) -> dict:
         """Return the full generation result as a dict."""
         ...
 
@@ -27,7 +27,7 @@ class BaseGenerator(ABC):
     def stream(
         self,
         claim: str,
-        doc_ids: List[str],
+        doc_ids: list[str],
         corpus: CorpusType,
     ) -> Generator[str, None, None]:
         """Yield tokens one by one for streaming."""

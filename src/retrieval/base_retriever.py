@@ -9,17 +9,14 @@ HybridRetriever and RerankedRetriever delegate indexing to their sub-retrievers
 and therefore don't need their own index lifecycle.
 """
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
-from typing import Dict, Optional
 
 
 class BaseRetriever(ABC):
     """Minimal interface shared by every retriever."""
 
     @abstractmethod
-    def retrieve(self, query: str, top_k: Optional[int] = None) -> Dict[str, float]:
+    def retrieve(self, query: str, top_k: int | None = None) -> dict[str, float]:
         """Return ``{doc_id: score}`` for the *top_k* most relevant documents."""
         ...
 

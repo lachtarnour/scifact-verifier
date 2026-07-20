@@ -6,8 +6,6 @@ avoids re-loading models.  If indexes don't exist yet, raises a clear
 error telling the user to run setup_indexes.py first.
 """
 
-from typing import Dict, List
-
 from src.data import load_corpus
 from src.retrieval import (
     BaseRetriever,
@@ -17,7 +15,8 @@ from src.retrieval import (
     Reranker,
     RerankedRetriever,
 )
-from src.utils import config, get_logger
+from src.config import config
+from src.utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -26,7 +25,7 @@ class RetrievalService:
     _instance: "RetrievalService | None" = None
 
     def __init__(self):
-        self.corpus: Dict = {}
+        self.corpus: dict = {}
         self.hybrid: HybridRetriever | None = None
         self.reranked: RerankedRetriever | None = None
         self._ready = False
@@ -85,7 +84,7 @@ class RetrievalService:
         query: str,
         mode: str = "hybrid_rerank",
         top_k: int = 10,
-    ) -> tuple[List[str], Dict[str, float]]:
+    ) -> tuple[list[str], dict[str, float]]:
         """
         Retrieve documents for a query.
 

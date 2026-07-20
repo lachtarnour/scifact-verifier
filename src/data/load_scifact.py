@@ -7,21 +7,20 @@ Qrels    : relevance judgments
 """
 
 import json
-from pathlib import Path
-from typing import Dict, List, Tuple
 
-from datasets import load_dataset
-
-from src.utils import config, get_logger
+from src.config import config
+from src.utils import get_logger
 
 logger = get_logger(__name__)
 
-CorpusType = Dict[str, Dict[str, str]]
-QueriesType = Dict[str, str]
-QrelsType = Dict[str, Dict[str, int]]
+CorpusType = dict[str, dict[str, str]]
+QueriesType = dict[str, str]
+QrelsType = dict[str, dict[str, int]]
 
 
 def _load_corpus_from_hf() -> CorpusType:
+    from datasets import load_dataset
+
     ds = load_dataset("BeIR/scifact", "corpus", split="corpus", trust_remote_code=False)
     corpus: CorpusType = {}
     for row in ds:
@@ -31,6 +30,8 @@ def _load_corpus_from_hf() -> CorpusType:
 
 
 def _load_queries_from_hf() -> QueriesType:
+    from datasets import load_dataset
+
     ds = load_dataset("BeIR/scifact", "queries", split="queries", trust_remote_code=False)
     queries: QueriesType = {}
     for row in ds:
@@ -40,6 +41,8 @@ def _load_queries_from_hf() -> QueriesType:
 
 
 def _load_qrels_from_hf(split: str = "test") -> QrelsType:
+    from datasets import load_dataset
+
     ds = load_dataset("BeIR/scifact-qrels", split=split, trust_remote_code=False)
     qrels: QrelsType = {}
     for row in ds:
@@ -85,11 +88,3 @@ def load_qrels(split: str = "test", force_reload: bool = False) -> QrelsType:
     with open(cache_path, "w") as f:
         json.dump(qrels, f)
     return qrels
-
-
-def load_all(split: str = "test") -> Tuple[CorpusType, QueriesType, QrelsType]:
-    corpus = load_corpus()
-    qrels = load_qrels(split)
-    all_queries = load_queries()
-    queries = {qid: all_queries[qid] for qid in qrels if qid in all_queries}
-    return corpus, queries, qrels

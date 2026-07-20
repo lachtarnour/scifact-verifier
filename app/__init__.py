@@ -2,7 +2,7 @@
 
 from flask import Flask
 
-from src.utils import config
+from src.config import config
 
 
 def create_app() -> Flask:

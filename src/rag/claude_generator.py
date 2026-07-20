@@ -4,14 +4,15 @@ Used only if ANTHROPIC_API_KEY is set.
 """
 
 import json
-from typing import Dict, Generator, List
+from collections.abc import Generator
 
 import anthropic
 
 from src.data.load_scifact import CorpusType
 from src.rag.base_generator import BaseGenerator
 from src.rag.prompt_builder import SYSTEM_PROMPT, build_user_prompt
-from src.utils import config, get_logger
+from src.config import config
+from src.utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -29,9 +30,9 @@ class ClaudeGenerator(BaseGenerator):
     def generate(
         self,
         claim: str,
-        doc_ids: List[str],
+        doc_ids: list[str],
         corpus: CorpusType,
-    ) -> Dict:
+    ) -> dict:
         client = self._get_client()
         user_prompt = build_user_prompt(claim, doc_ids, corpus)
 
@@ -69,7 +70,7 @@ class ClaudeGenerator(BaseGenerator):
     def stream(
         self,
         claim: str,
-        doc_ids: List[str],
+        doc_ids: list[str],
         corpus: CorpusType,
     ) -> Generator[str, None, None]:
         client = self._get_client()

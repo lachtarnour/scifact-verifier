@@ -6,7 +6,8 @@ Otherwise → OllamaGenerator (local, no key needed)
 """
 
 from src.rag.base_generator import BaseGenerator
-from src.utils import config, get_logger
+from src.config import config
+from src.utils import get_logger
 
 logger = get_logger(__name__)
 

@@ -10,7 +10,8 @@ import sys
 from src.data import load_corpus, load_queries, load_qrels
 from src.evaluation.evaluate_retrieval import evaluate_retrieval
 from src.retrieval import BM25Retriever, DenseRetriever, HybridRetriever, Reranker, RerankedRetriever
-from src.utils import config, get_logger
+from src.config import config
+from src.utils import get_logger
 
 logger = get_logger("evaluation")
 
@@ -34,7 +35,7 @@ def main() -> None:
 
     dense = DenseRetriever()
     if not dense.load():
-        dense.build(corpus)
+        dense.build(corpus, batch_size=config.DENSE_INDEX_BATCH_SIZE)
 
     hybrid = HybridRetriever([bm25, dense])
     reranked = RerankedRetriever(

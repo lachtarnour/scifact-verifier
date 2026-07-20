@@ -10,7 +10,7 @@ Model: cross-encoder/ms-marco-MiniLM-L-6-v2 — fast and accurate.
 """
 
 import warnings
-from typing import Dict, List
+from operator import itemgetter
 
 from sentence_transformers import CrossEncoder
 
@@ -19,21 +19,25 @@ warnings.filterwarnings("ignore", message=".*cache_dir.*deprecated.*")
 from src.data.load_scifact import CorpusType
 from src.data.preprocess import build_doc_text
 from src.retrieval.base_retriever import BaseRetriever
-from src.utils import config, get_logger
+from src.config import config
+from src.utils import get_logger
 
 logger = get_logger(__name__)
 
 
 class Reranker:
-    def __init__(self, model_name: str | None = None):
+    def __init__(self, model_name: str | None = None, device: str | None = None):
         self.model_name = model_name or config.RERANKER_MODEL
+        configured_device = device or config.DEVICE
+        self.device = None if configured_device.lower() == "auto" else configured_device
         self._model: CrossEncoder | None = None
 
     def _load(self) -> None:
         if self._model is None:
-            logger.info("Cross-encoder: %s", self.model_name)
+            logger.info("Cross-encoder: %s (%s)", self.model_name, self.device or "auto")
             self._model = CrossEncoder(
                 self.model_name,
+                device=self.device,
                 max_length=512,
                 model_kwargs={"cache_dir": str(config.INDEX_DIR / "models")},
             )
@@ -41,19 +45,19 @@ class Reranker:
     def rerank(
         self,
         query: str,
-        candidates: Dict[str, float],
+        candidates: dict[str, float],
         corpus: CorpusType,
         top_k: int | None = None,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Re-rank candidate doc_ids with the cross-encoder.
         Returns top_k doc_ids with their cross-encoder scores.
         """
-        self._load()
-        k = top_k or config.TOP_K_RERANK
-
         if not candidates:
             return {}
+
+        self._load()
+        k = top_k or config.TOP_K_RERANK
 
         pairs = []
         doc_id_list = list(candidates.keys())
@@ -64,10 +68,9 @@ class Reranker:
 
         scores = self._model.predict(pairs, show_progress_bar=False)
         ranked = sorted(
-            zip(doc_id_list, scores.tolist()), key=lambda x: x[1], reverse=True
+            zip(doc_id_list, scores.tolist()), key=itemgetter(1), reverse=True
         )
         return {doc_id: float(score) for doc_id, score in ranked[:k]}
-
 
 
 class RerankedRetriever(BaseRetriever):

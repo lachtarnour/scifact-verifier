@@ -1,10 +1,7 @@
 """Flask application entry point."""
 
-from dotenv import load_dotenv
-load_dotenv()
-
 from app import create_app
-from src.utils import config
+from src.config import config
 
 app = create_app()
 
