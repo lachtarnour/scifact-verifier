@@ -10,6 +10,10 @@ SUPPORTED / REFUTED / NOT ENOUGH INFO
 
 ![SciFact RAG Verifier Interface](app/images/image.png)
 
+## Demo
+
+![SciFact Verifier demo](docs/demo-scifact-verifier.gif)
+
 ## Architecture
 
 ```text
